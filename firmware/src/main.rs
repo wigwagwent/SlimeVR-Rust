@@ -34,6 +34,7 @@ fn main() -> ! {
 	let mut p = self::peripherals::ඞ::get_peripherals();
 	debug!("Initialized peripherals");
 	p.delay.delay_ms(1000 as u32);
+	debug!("After delay");
 
 	static EXECUTOR: StaticCell<Executor> = StaticCell::new();
 	EXECUTOR.init(Executor::new()).run(move |spawner| {
