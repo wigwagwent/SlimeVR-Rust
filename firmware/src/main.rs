@@ -1,88 +1,26 @@
 #![no_std]
 #![no_main]
-// Needed for embassy macros
-#![feature(type_alias_impl_trait)]
-// Needed to use `alloc` + `no_std`
-#![feature(alloc_error_handler)]
 #![deny(unsafe_op_in_unsafe_fn)]
 
-mod aliases;
-mod globals;
-mod imu;
-mod networking;
-mod peripherals;
-mod utils;
-
 use defmt::debug;
-use embassy_executor::{task, Executor};
 use embedded_hal::blocking::delay::DelayMs;
-use static_cell::StaticCell;
 
-#[cfg(feature = "mcu-nrf52840")]
-use cortex_m_rt::entry;
-#[cfg(feature = "mcu-esp32c3")]
-use riscv_rt::entry;
+// Panic handler
+use panic_halt as _;
 
-#[entry]
+// Set up global defmt logger
+use defmt_rtt as _;
+
+#[cortex_m_rt::entry]
 fn main() -> ! {
-	#[cfg(feature = "defmt-bbq")]
-	let bbq = defmt_bbq::init().unwrap();
-
-	self::globals::setup();
 	debug!("Booted");
 
-	let mut p = self::peripherals::ඞ::get_peripherals();
+	let p = embassy_nrf::init(Default::default());
+	let mut delay = embassy_time::Delay;
+
 	debug!("Initialized peripherals");
-	p.delay.delay_ms(1000 as u32);
+	delay.delay_ms(100 as u32);
 	debug!("After delay");
 
-	static EXECUTOR: StaticCell<Executor> = StaticCell::new();
-	EXECUTOR.init(Executor::new()).run(move |spawner| {
-		spawner.spawn(network_task()).unwrap();
-		spawner.spawn(imu_task(p.i2c, p.delay)).unwrap();
-		#[cfg(all(feature = "defmt-bbq", feature = "log-uart"))]
-		spawner.spawn(logger_task(bbq, p.uart)).unwrap();
-	});
-}
-
-#[task]
-async fn network_task() {
-	networking::network_task().await
-}
-
-#[task]
-async fn imu_task(
-	i2c: crate::aliases::ඞ::I2cConcrete<'static>,
-	delay: crate::aliases::ඞ::DelayConcrete,
-) {
-	crate::imu::imu_task(i2c, delay).await
-}
-
-#[cfg(all(feature = "log-uart", feature = "mcu-nrf52840", feature = "defmt-bbq"))]
-#[task]
-async fn logger_task(
-	mut bbq: defmt_bbq::DefmtConsumer,
-	mut uart: crate::aliases::ඞ::UartConcrete<'static>,
-) {
-	use embassy_futures::yield_now;
-	use embassy_nrf::uarte::Error;
-
-	loop {
-		let Ok(grant) = bbq.read() else {
-			yield_now().await;
-			continue; //should be impossible	
-		};
-		let len = grant.buf().len();
-		uart.write(b"got data: ").await;
-		match uart.write_from_ram(grant.buf()).await {
-			Err(Error::DMABufferNotInDataMemory) => {
-				// unreachable!("bbq should always be in RAM")
-				()
-			}
-			Err(Error::BufferZeroLength) | Err(Error::BufferTooLong) => (),
-			Ok(()) => (),
-			_ => (),
-		};
-		grant.release(len);
-	}
+	loop {}
 }

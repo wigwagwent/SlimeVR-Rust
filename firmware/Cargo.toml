@@ -34,144 +34,35 @@ repository.workspace = true
 edition.workspace = true
 rust-version.workspace = true
 
-
-[features]
-# default = ["mcu-esp32c3", "imu-mpu6050", "log-rtt", "net-wifi"]
-default = ["mcu-nrf52840", "imu-stubbed", "log-rtt", "net-stubbed"]
-
-# TODO: actually support another microcontroller
-# Supported microcontrollers
-mcu-esp32c3 = [
-  "dep:esp32c3-hal",
-  "defmt_esp_println/esp32c3",
-  "esp-backtrace/esp32c3",
-  "dep:riscv",
-  "dep:riscv-rt",
-  "dep:esp-alloc",
-  "dep:embedded-svc",
-]
-mcu-nrf52840 = [
-  "dep:cortex-m",
-  "dep:cortex-m-rt",
-  "dep:alloc-cortex-m",
-  "dep:embassy-time",
-  "embassy-nrf/nrf52840",
-  "embassy-nrf/time-driver-rtc1",
-  "embassy-executor/integrated-timers",
-  # "defmt-bbq",
-]
-
-# Wi-fi dependencies
-net-wifi = ["dep:esp-wifi", "dep:smoltcp"] # use wifi
-net-stubbed = []                           # Stubs out network   
-
-# Supported IMUs
-imu-mpu6050 = ["mpu6050-dmp"]
-imu-stubbed = []              # Stubs out the IMU
-
-# Supported defmt loggers
-log-rtt = ["dep:defmt-rtt"]
-log-usb-serial = ["defmt_esp_println?/jtag_serial"]
-log-uart = ["defmt_esp_println?/uart"]
-
-# Enable to flash without needing `espflash`
-direct-boot = ["esp32c3-hal?/direct-boot"]
-
-
 [dependencies]
-
-# mcu-esp32c3 stuff
-esp32c3-hal = { version = "0.3", optional = true, features = [
-  #"embassy",
-  #"embassy-time-systick",
-  #"direct-boot",
+embassy-nrf = { default-features = false, git = "https://github.com/embassy-rs/embassy", rev = "2528f451387e6c7b27c3140cd87d47521d1971a2", features = [
+  "nrf52840",
+  "time-driver-rtc1",
 ] }
-riscv-rt = { version = "0.10", optional = true }
-riscv = { version = "0.10", optional = true }
-esp-alloc = { version = "0.1", optional = true }
-
-# mcu-nrf52840 stuff
-embassy-nrf = { optional = true, default-features = false, git = "https://github.com/embassy-rs/embassy", rev = "2528f451387e6c7b27c3140cd87d47521d1971a2" }
-alloc-cortex-m = { version = "0.4", optional = true }
-cortex-m = { version = "0.7", optional = true, features = [
-  "critical-section-single-core",
-] }
-cortex-m-rt = { version = "0.7", optional = true }
+cortex-m = { version = "0.7", features = ["critical-section-single-core"] }
+cortex-m-rt = "0.7"
 
 
 # Embassy stuff
-embassy-futures = "0.1.0"
 embassy-executor = { git = "https://github.com/embassy-rs/embassy", rev = "2528f451387e6c7b27c3140cd87d47521d1971a2", features = [
   #"integrated-timers",
   "nightly",
 ] }
-embassy-time = { version = "0.1.0", optional = true, features = [
+embassy-time = { version = "0.1.0", features = [
   # "tick-hz-16_000_000",
   # "unstable-traits",
 ] }
 
-# Wi-Fi
-esp-wifi = { git = "https://github.com/esp-rs/esp-wifi.git", rev = "9034a26", features = [
-  "esp32c3",
-  "wifi",
-  "embedded-svc",
-], optional = true }
-smoltcp = { version = "0.8", default-features = false, features = [
-  "async",
-  "defmt",
-  "socket-raw",
-  "socket-udp",
-  "socket-tcp",
-  "socket-icmp",
-  "socket-dhcpv4",
-  "medium-ethernet",
-  "proto-dhcpv4",
-  "proto-igmp",
-  "proto-ipv4",
-], optional = true }
-
 # Platform independent traits
 embedded-hal = "0.2"
-embedded-svc = { version = "0.23", default-features = false, optional = true, features = [
-  #  "nightly",
-] }
 
 # Logging
 defmt = "0.3"
-defmt-rtt = { version = "0.4", optional = true }
-panic_defmt = { path = "crates/panic_defmt" }
-defmt_esp_println = { path = "crates/defmt_esp_println", optional = true }
-esp-backtrace = { git = "https://github.com/esp-rs/esp-backtrace.git", rev = "312f8ea", default-features = false, optional = true }
-defmt-bbq = { version = "0.1", optional = true }
+defmt-rtt = { version = "0.4" }
 
-# Peripherals
-mpu6050-dmp = { version = "0.2", optional = true }
-
-# Other crates
-static_cell = "1"
-nb = "1"
-nalgebra = { version = "0.31", default-features = false, features = [
-  "macros",
-  "libm",
-] }
-fugit = "0.3"
-
-
-[build-dependencies]
-feature_utils = "0.0.0"
-cfg_aliases = "0.1.1"
-
+panic-halt = "0.2"
 
 [patch.crates-io]
-# Enable non-default I2C addresses and InitError
-mpu6050-dmp = { git = "https://github.com/TheButlah/mpu6050-dmp-rs", rev = "77128a75a51547baadc0f0ef99aba4432e848f10" }
-
 # Emable use of `atomic-polyfill`
 defmt = { git = "https://github.com/TheButlah/defmt", rev = "b5d5e316ea56250dcb25b3549bcf4bfdb1687796" }
 defmt-rtt = { git = "https://github.com/TheButlah/defmt", rev = "b5d5e316ea56250dcb25b3549bcf4bfdb1687796" }
-
-# Necessary for esp-wifi to not be bugged
-# https://github.com/esp-rs/esp-wifi/blob/9b644387a54a5ace93d4280f29075ad2a9e9a8ed/README.md
-# https://github.com/esp-rs/esp-wifi/issues/88#issuecomment-1332363697
-[profile.dev.package.esp-wifi]
-opt-level = 3
